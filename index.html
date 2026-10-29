@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ЮнБизнес — ПЭТ-банки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oranienbaum&display=swap&subset=cyrillic" rel="stylesheet">
+<link rel="preload" href="fonts/MedeoSansVariable.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* Medeo Sans (OFL, fonts/OFL.txt) — меню, описания, кнопки */
+  @font-face {
+    font-family: "Medeo Sans"; src: url(fonts/MedeoSansVariable.woff2) format("woff2");
+    font-weight: 100 900; font-style: normal; font-display: swap;
+  }
+  :root {
+    --navy: #12335b;
+    --line: rgba(255, 255, 255, .26);
+    --glass: rgba(10, 18, 34, .22);
+    --ease: cubic-bezier(.2, .7, .1, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #0b1220; }
+  html, body { height: auto; }
+  body { font-family: "Medeo Sans", system-ui, sans-serif; color: #fff; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+  /* длина прокрутки, за которую проигрывается приближение банки */
+  .scrolly { position: relative; height: 900vh; }
+  .hero { position: sticky; top: 0; width: 100%; height: 100vh; min-height: 640px; overflow: hidden; }
+  .hero__bg {
+    position: absolute; inset: 0; background: #000;
+    transform: scale(1.06); animation: bgIn 2.4s var(--ease) forwards;
+  }
+  .hero__bg .layer {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: center; opacity: 0; z-index: 1;
+    will-change: opacity;                 /* слои всегда в видеопамяти — переключение без подготовки */
+    transition: opacity 0s linear .35s;   /* уходящее видео гаснет, только когда новое уже проявилось поверх */
+  }
+  .hero__bg .layer.on { opacity: 1; z-index: 2; transition: opacity .35s linear; }
+  .hero__bg .layer.cut { transition: none; }
+  .hero__shade {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(to bottom, rgba(6,14,30,.55) 0%, rgba(6,14,30,.18) 30%, rgba(6,14,30,0) 46%),
+      linear-gradient(to top, rgba(6,10,20,.6) 0%, rgba(6,10,20,0) 32%);
+    transition: background .5s;
+  }
+  body[data-pos="bottom"] .hero__shade {
+    background:
+      linear-gradient(to bottom, rgba(6,14,30,.5) 0%, rgba(6,14,30,0) 22%),
+      linear-gradient(to top, rgba(6,10,20,.78) 0%, rgba(6,10,20,.3) 30%, rgba(6,10,20,0) 50%);
+  }
+  body[data-pos="left"] .hero__shade, body[data-pos="right"] .hero__shade {
+    background:
+      linear-gradient(to bottom, rgba(6,14,30,.55) 0%, rgba(6,14,30,.15) 34%, rgba(6,14,30,0) 50%),
+      linear-gradient(to top, rgba(6,10,20,.6) 0%, rgba(6,10,20,0) 32%);
+  }
+  @keyframes bgIn { to { transform: scale(1); } }
+
+  /* ---------- шапка ---------- */
+  .header {
+    position: absolute; z-index: 5; top: 24px; left: 24px; right: 24px;
+    display: flex; gap: 16px; align-items: center;
+  }
+  .logo {
+    flex: none; height: 64px; padding: 0 30px; border-radius: 32px;
+    background: var(--navy); display: flex; align-items: center;
+  }
+  .logo svg { width: 149px; height: 24px; display: block; }
+  .nav {
+    flex: 1; min-width: 0; height: 64px; padding: 8px; border-radius: 32px;
+    border: 1px solid var(--line); background: var(--glass);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .nav__group { display: flex; align-items: center; gap: 6px; }
+  .nav__link {
+    height: 48px; padding: 0 14px; border-radius: 8px; display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 500; white-space: nowrap; transition: background .25s;
+  }
+  .nav__link { position: relative; }
+  .nav__link:hover { background: rgba(255,255,255,.12); }
+  .nav__catalog { background: var(--navy); padding: 0 18px 0 16px; }
+  .nav__catalog:hover { background: #1a4277; }
+  .nav__sep { width: 1px; height: 24px; background: var(--line); margin: 0 8px; flex: none; }
+  .nav__phone { font-weight: 600; letter-spacing: .01em; }
+  .badge {
+    min-width: 22px; height: 22px; padding: 0 7px; border-radius: 4px;
+    background: rgba(255,255,255,.16); font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .nav__user {
+    width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; transition: background .25s;
+  }
+  .nav__user:hover { background: rgba(255,255,255,.12); }
+  .icon { width: 18px; height: 18px; flex: none; }
+
+  /* меню без подложки: всё по левому краю, справа телефон и прочее */
+  body[data-menu="plain"] .logo { background: none; padding: 0 12px 0 8px; }
+  body[data-menu="plain"] .nav { background: none; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; justify-content: flex-start; }
+  body[data-menu="plain"] .nav__group--side { margin-left: auto; }
+  body[data-menu="plain"] .nav__user { border-color: rgba(255,255,255,.4); }
+
+  /* в вариантах без фона и с лого по центру «Каталог» без синей подложки, только с иконкой */
+  body[data-menu="plain"] .nav__catalog, body[data-menu="center"] .nav__catalog { background: none; padding: 0 14px; margin-right: 0; }
+  body[data-menu="plain"] .nav__catalog:hover, body[data-menu="center"] .nav__catalog:hover { background: rgba(255,255,255,.12); }
+
+  /* логотип по центру без подложки: пункты слева, телефон/контакты/корзина справа */
+  body[data-menu="center"] .header { display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; }
+  body[data-menu="center"] .nav { display: contents; }
+  body[data-menu="center"] .nav__group--main { order: 1; justify-self: start; }
+  body[data-menu="center"] .logo { order: 2; background: none; padding: 0; }
+  body[data-menu="center"] .logo svg { width: 172px; height: 28px; }
+  body[data-menu="center"] .nav__group--side { order: 3; justify-self: end; }
+  body[data-menu="center"] .nav__link { height: 40px; }
+  @media (max-width: 1360px) { body[data-menu="center"] .nav__phone span { display: none; } }
+  @media (max-width: 1180px) { body[data-menu="center"] .nav__group--main .nav__link { display: none; } }
+  .nav__burger { display: none; }
+
+  /* швейцарский: без подложек и иконок, сетка 12 колонок, волосяная линия, нумерация пунктов */
+  body[data-menu="swiss"] .header {
+    top: 0; left: 0; right: 0; padding: 26px 40px 20px;
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,.28);
+  }
+  body[data-menu="swiss"] .logo { grid-column: 1 / 4; height: auto; padding: 0; background: none; }
+  body[data-menu="swiss"] .logo svg { width: 140px; height: 23px; }
+  body[data-menu="swiss"] .nav {
+    display: contents; background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  body[data-menu="swiss"] .nav__group--main { grid-column: 4 / 9; gap: 0; justify-content: space-between; counter-reset: n; }
+  body[data-menu="swiss"] .nav__group--side { grid-column: 9 / 13; justify-self: end; gap: 28px; }
+  body[data-menu="swiss"] .nav__link {
+    height: auto; padding: 0; margin: 0; border-radius: 0; background: none;
+    font-size: 14px; font-weight: 500; letter-spacing: -.005em; line-height: 1;
+    position: relative; transition: opacity .2s;
+  }
+  body[data-menu="swiss"] .nav__group--main .nav__link::before {
+    counter-increment: n; content: counter(n, decimal-leading-zero);
+    font-size: 10px; font-weight: 500; opacity: .5; margin-right: 8px; align-self: flex-start;
+    font-variant-numeric: tabular-nums;
+  }
+  body[data-menu="swiss"] .nav__link, body[data-menu="swiss"] .nav__user { padding: 8px 10px; margin: -8px -10px; border-radius: 8px; }
+  body[data-menu="swiss"] .nav__link:hover, body[data-menu="swiss"] .nav__user:hover { background: rgba(255,255,255,.12); }
+  body[data-menu="swiss"] .nav .icon, body[data-menu="swiss"] .nav__sep { display: none; }
+  body[data-menu="swiss"] .nav__phone { font-variant-numeric: tabular-nums; }
+  body[data-menu="swiss"] .badge { min-width: 0; height: auto; padding: 0; background: none; font-size: inherit; font-weight: inherit; }
+  body[data-menu="swiss"] .badge::before { content: "("; } body[data-menu="swiss"] .badge::after { content: ")"; }
+  body[data-menu="swiss"] .nav__user { width: auto; height: auto; border: 0; font-size: 14px; font-weight: 500; }
+  body[data-menu="swiss"] .nav__user::after { content: "Кабинет"; }
+  @media (max-width: 1240px) { body[data-menu="swiss"] .nav__phone span { display: inline; } body[data-menu="swiss"] .nav__contacts { display: none; } }
+  @media (max-width: 1060px) {
+    body[data-menu="swiss"] .nav__group--main { grid-column: 4 / 10; }
+    body[data-menu="swiss"] .nav__group--side { grid-column: 10 / 13; }
+    body[data-menu="swiss"] .nav__phone { display: none; }
+  }
+
+  /* появление шапки по пунктам */
+  .reveal { opacity: 0; transform: translateY(-10px); animation: drop .7s var(--ease) forwards; animation-delay: calc(var(--i) * 60ms + 200ms); }
+  @keyframes drop { to { opacity: 1; transform: none; } }
+
+  /* ---------- текст ---------- */
+  .copy {
+    position: absolute; z-index: 3; left: 0; right: 0; padding: 0 120px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    top: 168px; transition: all .6s var(--ease);
+  }
+  .copy { opacity: calc(1 - var(--p, 0) * 12); translate: 0 calc(var(--p, 0) * -400px); }
+  body[data-pos="bottom"] .copy { top: auto; bottom: 88px; }
+  body[data-pos="left"] .copy { top: 176px; align-items: flex-start; text-align: left; padding-left: 64px; }
+  body[data-pos="right"] .copy { top: 176px; align-items: flex-end; text-align: right; padding-right: 96px; }
+
+  .title {
+    font-family: Oranienbaum, Georgia, serif; font-weight: 400; text-transform: uppercase;
+    font-size: var(--ts, clamp(42px, 5vw, 76px)); line-height: .98; letter-spacing: .005em;
+    text-shadow: 0 2px 30px rgba(0,0,0,.25);
+  }
+  body[data-font="medeo"] .title {
+    font-family: "Medeo Sans", sans-serif; font-weight: 500; text-transform: none;
+    font-size: var(--ts, clamp(38px, 4.4vw, 68px)); line-height: 1.04; letter-spacing: -.03em;
+  }
+  body[data-pos="left"] .title, body[data-pos="right"] .title { max-width: 760px; }
+  .title .w { display: inline-block; white-space: nowrap; }
+  .title .ch {
+    display: inline-block; opacity: 0; transform: translateY(.35em); filter: blur(8px);
+    animation: ch .9s var(--ease) forwards; animation-delay: calc(var(--i) * 28ms + 500ms);
+  }
+  @keyframes ch { to { opacity: 1; transform: none; filter: blur(0); } }
+  .sub {
+    margin-top: 20px; max-width: 720px; font-size: var(--ss, 18px); line-height: 1.5; color: rgba(255,255,255,.9);
+    text-shadow: 0 1px 14px rgba(0,0,0,.35);
+  }
+  .cta {
+    margin-top: 32px; height: var(--bh, 46px); padding: 0 calc(var(--bh, 46px) * .57); border-radius: var(--br, 2px);
+    color: #fff; border: 1px solid transparent;
+    font-size: var(--bf, 14px); font-weight: 500; letter-spacing: .02em;
+    display: inline-flex; align-items: center; position: relative;
+    opacity: 0; transform: translateY(8px); animation: rise .7s var(--ease) 1.9s forwards;
+    transition: background .3s, color .3s, border-color .3s;
+  }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  /* контур — тонкая рамка, почти без веса */
+  body[data-cta="outline"] .cta { border-color: rgba(255,255,255,.45); }
+  body[data-cta="outline"] .cta:hover { border-color: #fff; background: rgba(255,255,255,.06); }
+  /* стекло — лёгкая матовая подложка */
+  body[data-cta="glass"] .cta {
+    background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  body[data-cta="glass"] .cta:hover { background: rgba(255,255,255,.16); }
+  /* линия — просто текст с подчёркиванием, как пункты меню */
+  body[data-cta="line"] .cta { height: auto; padding: 0 0 8px; border: 0; border-radius: 0; font-size: var(--bf, 15px); }
+  body[data-cta="line"] .cta::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: currentColor;
+    transform-origin: left; transition: transform .45s var(--ease);
+  }
+  body[data-cta="line"] .cta:hover::after { transform: scaleX(.35); }
+  /* белая — прежняя, но компактнее */
+  body[data-cta="solid"] .cta { background: #fff; color: #0b1220; border-color: #fff; }
+  body[data-cta="solid"] .cta:hover { background: transparent; color: #fff; }
+  .sub .ch { display: inline; opacity: 0; animation: fade .5s ease forwards; animation-delay: calc(var(--i) * 12ms + 1300ms); }
+  @keyframes fade { to { opacity: 1; } }
+
+  /* ---------- подписи свойств банки (появляются по ходу скролла) ---------- */
+  .caps { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .cap {
+    --th: clamp(28px, 2.5vw, 38px);
+    position: absolute; width: 360px; opacity: var(--a, 0);
+    transform: translateY(calc((1 - var(--a, 0)) * 18px)); text-shadow: 0 1px 18px rgba(0,0,0,.45);
+  }
+  .cap__title {
+    font-family: Oranienbaum, Georgia, serif; font-weight: 400; text-transform: uppercase;
+    font-size: var(--th); line-height: 1; letter-spacing: .005em;
+  }
+  .cap__text { margin-top: 12px; font-size: 16px; line-height: 1.5; color: rgba(255,255,255,.84); }
+  .cap__line, .cap__dot { display: none; position: absolute; }
+  /* слева: колонка по центру высоты */
+  body[data-cap="left"] .cap { left: 64px; top: 50%; margin-top: -70px; }
+  /* справа */
+  body[data-cap="right"] .cap { right: 72px; top: 50%; margin-top: -70px; width: 300px; }
+  /* внизу: угол экрана, волосяная линия сверху */
+  body[data-cap="bottom"] .cap { left: 64px; bottom: 56px; width: 420px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.3); }
+  /* выноска: текст в боковой колонке, линия от текста к детали на банке (координаты считает скрипт) */
+  body[data-cap="callout"] .cap { top: calc(var(--ay) * 1px - var(--th) / 2); width: 340px; }
+  body[data-cap="callout"] .cap[data-side="right"] { right: 96px; }
+  body[data-cap="callout"] .cap[data-side="left"] { left: 64px; }
+  body[data-cap="callout"] .cap__line, body[data-cap="callout"] .cap__dot { display: block; }
+  body[data-cap="callout"] .cap__line { top: calc(var(--th) / 2); height: 1px; width: calc(var(--len) * 1px); background: rgba(255,255,255,.55); transform: scaleX(var(--a, 0)); }
+  body[data-cap="callout"] .cap__dot {
+    top: calc(var(--th) / 2 - 4px); width: 9px; height: 9px; border-radius: 50%; background: #fff; opacity: var(--a, 0);
+    box-shadow: 0 0 0 5px rgba(255,255,255,.18), 0 0 18px rgba(255,255,255,.6);
+  }
+  body[data-cap="callout"] .cap[data-side="right"] .cap__line { left: calc(-14px - var(--len) * 1px); transform-origin: right; }
+  body[data-cap="callout"] .cap[data-side="right"] .cap__dot { left: calc(-18px - var(--len) * 1px); }
+  body[data-cap="callout"] .cap[data-side="left"] .cap__line { left: calc(100% + 14px); transform-origin: left; }
+  body[data-cap="callout"] .cap[data-side="left"] .cap__dot { left: calc(100% + 10px + var(--len) * 1px); }
+  @media (max-width: 820px) {
+    body[data-cap] .cap { left: 16px; right: 16px; top: auto; bottom: 40px; width: auto; margin: 0; text-align: left; }
+    body[data-cap] .cap__line, body[data-cap] .cap__dot { display: none; }
+  }
+
+  /* ---------- точки экранов ---------- */
+  /* навигация по экранам: в покое — вертикальные риски, при наведении — карточка со списком */
+  .dots { position: absolute; z-index: 4; right: 20px; top: 50%; transform: translateY(-50%); }
+  .dots__card {
+    display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 12px;
+    border: 1px solid transparent; transition: background .35s, border-color .35s, backdrop-filter .35s;
+  }
+  .dots:hover .dots__card {
+    background: rgba(10,14,24,.55); border-color: rgba(255,255,255,.14);
+    backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  }
+  .dots a {
+    display: flex; align-items: center; justify-content: flex-end; gap: 14px; height: 30px;
+    padding: 0 8px 0 10px; border-radius: 7px; transition: background .2s;
+  }
+  .dots:hover a:hover { background: rgba(255,255,255,.1); }
+  .dots:hover a.on { background: rgba(255,255,255,.16); }
+  /* риска: тонкий скруглённый прямоугольник, активная длиннее и белая */
+  .dots i {
+    width: 3px; height: 12px; border-radius: 2px; background: rgba(255,255,255,.32); flex: none;
+    opacity: 0; animation: fade .6s ease forwards; animation-delay: calc(var(--i) * 70ms + 900ms);
+    transition: height .35s var(--ease), background .3s;
+  }
+  .dots a.on i { height: 22px; background: #fff; }
+  .dots a:hover i { background: #fff; }
+  .dots__label {
+    display: flex; align-items: baseline; font-size: 13px; font-weight: 500; white-space: nowrap; color: rgba(255,255,255,.66);
+    max-width: 0; overflow: hidden; opacity: 0; pointer-events: none;
+    transition: max-width .45s var(--ease), opacity .3s, color .2s; transition-delay: calc(var(--i) * 20ms);
+  }
+  .dots__label b { font-weight: 500; font-size: 11px; opacity: .55; margin-right: 10px; font-variant-numeric: tabular-nums; }
+  .dots:hover .dots__label { max-width: 220px; opacity: 1; pointer-events: auto; }
+  .dots a.on .dots__label, .dots a:hover .dots__label { color: #fff; }
+
+  /* ---------- панель вариантов ---------- */
+  .tweak { position: fixed; z-index: 20; left: 24px; bottom: 24px; font-size: 13px; }
+  .tweak__toggle {
+    height: 40px; padding: 0 16px; border-radius: 20px; background: rgba(10,18,34,.72);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px; font-weight: 500;
+  }
+  .tweak__toggle svg { transition: transform .3s; }
+  .tweak.open .tweak__toggle svg { transform: rotate(180deg); }
+  .tweak__panel {
+    position: absolute; left: 0; bottom: 48px; width: 280px; padding: 16px; border-radius: 16px;
+    background: rgba(10,18,34,.86); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--line);
+    opacity: 0; transform: translateY(8px); pointer-events: none; transition: .3s var(--ease);
+  }
+  .tweak.open .tweak__panel { opacity: 1; transform: none; pointer-events: auto; }
+  .tweak__label { color: rgba(255,255,255,.55); margin: 4px 0 8px; }
+  .tweak__label:not(:first-child) { margin-top: 16px; }
+  .seg { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .seg--3 { grid-template-columns: repeat(3, 1fr); }
+  .tweak__panel { width: 320px; }
+  .seg button { height: 36px; font-size: 12px; border-radius: 10px; background: rgba(255,255,255,.07); transition: background .2s; }
+  .seg button:hover { background: rgba(255,255,255,.14); }
+  .seg button[aria-pressed="true"] { background: var(--navy); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+  .tweak__panel { max-height: calc(100vh - 110px); overflow-y: auto; }
+  .size { display: grid; grid-template-columns: 92px 1fr 52px; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .size span { color: rgba(255,255,255,.75); font-size: 12px; }
+  .size input[type=range] { width: 100%; accent-color: #fff; }
+  .size input[type=number] {
+    width: 52px; height: 28px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.06); color: #fff; font: inherit; font-size: 12px; text-align: right;
+  }
+  .tweak__reset { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.55); text-decoration: underline; text-underline-offset: 3px; }
+  .tweak__replay { margin-top: 16px; width: 100%; height: 36px; border-radius: 10px; border: 1px solid var(--line); }
+  .tweak__replay:hover { background: rgba(255,255,255,.08); }
+
+  /* ---------- узкие экраны ---------- */
+  @media (max-width: 1240px) { .nav__phone span { display: none; } }
+  @media (max-width: 1060px) {
+    .nav__group--main .nav__link:not(.nav__catalog), .nav__group--main .nav__sep { display: none; }
+  }
+  @media (max-width: 820px) {
+    .header { top: 16px; left: 16px; right: 16px; gap: 10px; }
+    .logo { height: 52px; padding: 0 18px; }
+    .logo svg { width: 120px; }
+    .nav { height: 52px; padding: 4px; }
+    .nav__link { height: 42px; }
+    .nav__catalog span, .nav__contacts, .nav__phone, .nav__group--side .nav__sep { display: none; }
+    .nav__user { width: 42px; height: 42px; }
+    .copy, body[data-pos] .copy { padding: 0 16px; }
+    .dots { display: none; }
+    body[data-menu="swiss"] .header { padding: 18px 16px 14px; grid-template-columns: 1fr auto; }
+    body[data-menu="swiss"] .logo { grid-column: 1; }
+    body[data-menu="swiss"] .nav__group--main { display: none; }
+    body[data-menu="swiss"] .nav__group--side { grid-column: 2; gap: 20px; }
+  }
+  /* ---------- прелоадер (демо в исходном качестве) ---------- */
+  html.loading, html.loading body { overflow: hidden; }
+  .loader {
+    position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: #05070c; transition: opacity .7s var(--ease), visibility .7s;
+  }
+  .loader.done { opacity: 0; visibility: hidden; }
+  .loader__box { width: min(440px, 100%); }
+  .loader__logo { width: 172px; height: 28px; display: block; }
+  /* уровень загрузки — крупное число, как заголовок страницы */
+  .loader__level {
+    margin-top: 56px; display: flex; align-items: flex-start; gap: 6px; line-height: .8;
+    font-family: Oranienbaum, Georgia, serif; font-size: 128px; font-variant-numeric: tabular-nums;
+  }
+  .loader__level small { font-family: "Medeo Sans", sans-serif; font-size: 18px; font-weight: 500; opacity: .5; margin-top: 4px; }
+  .loader__bar { margin-top: 28px; height: 2px; border-radius: 1px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .loader__bar i { display: block; height: 100%; width: calc(var(--lp, 0) * 100%); background: #fff; transition: width .3s linear; }
+  .loader__meta { margin-top: 12px; display: flex; justify-content: space-between; gap: 16px; font-size: 12px; color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; }
+  .loader__title { margin-top: 44px; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+  .loader__note { margin-top: 10px; font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.78); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .title .ch, .sub .ch, .dots i, .hero__bg, .cta { animation: none; opacity: 1; transform: none; filter: none; }
+  }
+</style>
+</head>
+<body data-menu="center" data-pos="left" data-font="oranienbaum" data-cta="outline" data-cap="callout">
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="loader__box">
+    <svg class="loader__logo" viewBox="0 0 149 24" aria-label="ЮнБизнес"><use href="#logoMark"/></svg>
+    <div class="loader__level"><span id="loaderPct">0</span><small>%</small></div>
+    <div class="loader__bar"><i></i></div>
+    <div class="loader__meta"><span id="loaderStage">Загрузка кадров анимации</span><span id="loaderMb">0 из 49 МБ</span></div>
+    <p class="loader__title">Демо-версия первого экрана</p>
+    <p class="loader__note">Анимация загружается целиком и&nbsp;в&nbsp;исходном качестве рендера, без сжатия и&nbsp;оптимизации под веб. Это может занять пару минут&nbsp;— страница откроется, когда загрузится всё. Лучше всего смотреть в&nbsp;Chrome на&nbsp;большом экране.</p>
+  </div>
+</div>
+
+<main class="scrolly">
+<section class="hero">
+  <div class="hero__bg" aria-hidden="true">
+    <!-- интро один раз → петля «парения» → по скроллу приближение -->
+    <!-- AV1 10 бит 4:4:4 — как кадры AVIF на canvas (Chrome, Edge, Firefox); HEVC 10 бит — Safari; H.264 — запасной -->
+    <video id="vIntro" class="layer on" muted playsinline preload="none">
+      <source src="intro.av1.mp4" type='video/mp4; codecs="av01.1.09M.10"'>
+      <source src="intro.hevc.mp4" type='video/mp4; codecs="hvc1.2.4.L153.B0"'>
+      <source src="intro.mp4" type="video/mp4">
+    </video>
+    <video id="vLoop" class="layer" muted playsinline loop preload="none">
+      <source src="loop.av1.mp4" type='video/mp4; codecs="av01.1.09M.10"'>
+      <source src="loop.hevc.mp4" type='video/mp4; codecs="hvc1.2.4.L153.B0"'>
+      <source src="loop.mp4" type="video/mp4">
+    </video>
+    <canvas id="vScroll" class="layer"></canvas>
+  </div>
+  <div class="hero__shade"></div>
+
+  <header class="header">
+    <a class="logo reveal" style="--i:0" href="#" aria-label="ЮнБизнес — на главную">
+      <svg viewBox="0 0 149 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g id="logoMark">
+        <path d="M12.0033 11.9994V14.6379C11.9185 18.1869 6.75602 18.0409 6.75602 14.6377L6.75585 6.75212L3.07812 3.07422L3.0783 14.6377C3.0783 18.2682 5.70177 20.9498 9.3552 20.9246H15.6796V15.6759C14.4543 14.4505 13.2289 13.225 12.0033 11.9994Z" fill-rule="evenodd" clip-rule="evenodd" fill="white"/>
+        <path d="M11.9968 11.9996L11.9966 9.36133C12.0815 5.81213 17.2441 5.95808 17.2441 9.36133V17.2471L20.922 20.9248L20.9218 9.36133C20.9216 5.73079 18.2982 3.04922 14.6447 3.07439H8.32031V8.32328C9.54569 9.54866 10.7712 10.774 11.9968 11.9996Z" fill-rule="evenodd" clip-rule="evenodd" fill="white"/>
+        <path d="M0.404762 0H15.4628C17.811 0 19.9455 0.960584 21.4925 2.50745C23.0396 4.05449 24 6.18904 24 8.53698V24H8.53698C6.18887 24 4.05449 23.0394 2.50745 21.4925C0.960408 19.9455 0 17.8108 0 15.4628V0H0.404762ZM15.4628 0.809701H0.809349V15.463C0.809349 17.5875 1.67909 19.5196 3.07982 20.9204C4.48038 22.3211 6.41229 23.1906 8.53698 23.1906H23.1905V8.53716C23.1905 6.41246 22.3207 4.48073 20.9202 3.08C19.5194 1.67926 17.5874 0.809701 15.4628 0.809701Z" fill="white"/>
+        <path d="M138.224 6.3205H145.774C147.244 6.3205 148.447 7.5282 148.447 9.00177V10.8126H145.468V9.53849C145.468 9.07501 145.089 8.69584 144.628 8.69584H139.369C138.908 8.69584 138.529 9.07559 138.529 9.53849V14.4622C138.529 14.9249 138.907 15.3048 139.369 15.3048H144.628C145.09 15.3048 145.468 14.9258 145.468 14.4622V13.1877H148.447V14.9985C148.447 16.4721 147.243 17.6798 145.774 17.6798H138.224C136.754 17.6798 135.55 16.4732 135.55 14.9985V9.00196C135.55 7.52725 136.753 6.32069 138.224 6.32069V6.3205ZM96.4766 6.3205H104.027C105.497 6.3205 106.7 7.52896 106.7 9.00139V10.0168V10.4692V10.5677C106.7 11.1072 106.476 11.6085 106.102 12.0002C106.476 12.392 106.7 12.8928 106.7 13.4324V13.5312V13.9836V14.9987C106.7 16.4711 105.495 17.6796 104.027 17.6796H96.4766C95.009 17.6796 93.8031 16.4734 93.8031 14.9987V13.1875H96.7818V14.462C96.7818 14.9222 97.1599 15.3046 97.6219 15.3046H102.882C103.343 15.3046 103.722 14.9256 103.722 14.462V14.0303C103.722 13.5669 103.343 13.1875 102.882 13.1875H98.7725V10.8124H102.882C103.343 10.8124 103.722 10.4332 103.722 9.96953V9.5383C103.722 9.07482 103.341 8.69565 102.882 8.69565H97.6219C97.1632 8.69565 96.7818 9.07787 96.7818 9.5383V10.8124H93.8031V9.0012C93.8031 7.52648 95.0059 6.32031 96.4766 6.32031V6.3205ZM122.653 6.3205H124.751H125.632H134.404V8.69584H125.632V10.8126H133.246V13.1877H125.632V15.3044H134.404V17.6798H125.632H124.751H122.653V6.3205ZM118.146 6.3205H121.125V17.6798H118.146V13.1877H111.207V17.6798H108.228V6.3205H111.207V10.8126H118.146V6.3205ZM79.378 6.3205H82.3568V14.0221L89.2964 6.3205H92.2752V17.6798H89.2964V9.97812L82.3568 17.6798H79.378V6.3205ZM64.9531 6.3205H67.2637H67.9317H76.9596V8.69584H67.9317V10.4597H76.1507C77.0857 10.4597 77.8501 11.2285 77.8501 12.1641V15.9758C77.8501 16.9111 77.0838 17.6799 76.1507 17.6799H67.9317H67.8377H64.9531V6.32069V6.3205ZM67.9317 12.8349V15.3048H74.4862C74.6987 15.3048 74.8712 15.1312 74.8712 14.9188V13.2211C74.8712 13.0084 74.6966 12.835 74.4862 12.835H67.9317V12.8349Z" fill-rule="evenodd" clip-rule="evenodd" fill="white"/>
+        <path d="M32 6.3205H34.9787V10.8126H37.2882V9.00177C37.2882 7.52706 38.491 6.3205 39.9616 6.3205H46.3262C47.7968 6.3205 48.9996 7.52973 48.9996 9.00177V14.9983C48.9996 16.4703 47.7941 17.6796 46.3262 17.6796H39.9616C38.4937 17.6796 37.2882 16.473 37.2882 14.9983V13.1875H34.9787V17.6796H32V6.32031V6.3205ZM60.4462 6.3205H63.4249V17.6798H60.4462V13.1877H53.5067V17.6798H50.5279V6.3205H53.5067V10.8126H60.4462V6.3205ZM41.107 8.69584H45.1812C45.643 8.69584 46.0211 9.07768 46.0211 9.53848V14.4622C46.0211 14.9228 45.6403 15.3048 45.1812 15.3048H41.107C40.6479 15.3048 40.2669 14.9258 40.2669 14.4622V9.53848C40.2669 9.07501 40.645 8.69584 41.107 8.69584Z" fill-rule="evenodd" clip-rule="evenodd" fill="white"/>
+      </g></svg>
+    </a>
+
+    <nav class="nav reveal" style="--i:1" aria-label="Главное меню">
+      <div class="nav__group nav__group--main">
+        <a class="nav__link reveal" style="--i:2" href="#about">О компании</a>
+        <a class="nav__link nav__contacts reveal" style="--i:3" href="#contacts">Контакты</a>
+        <a class="nav__link reveal" style="--i:4" href="#docs">Документы</a>
+        <a class="nav__link reveal" style="--i:5" href="#faq">Вопросы</a>
+      </div>
+      <div class="nav__group nav__group--side">
+        <a class="nav__link nav__phone reveal" style="--i:6" href="tel:88002502995" aria-label="Позвонить: 8 800 250 29 95">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+          <span>8 800 250 29 95</span>
+        </a>
+        <i class="nav__sep reveal" style="--i:7"></i>
+        <a class="nav__link nav__catalog reveal" style="--i:8" href="#catalog">
+          <svg class="icon" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="7" height="7" rx="2"/><rect x="10" y="1" width="7" height="7" rx="2"/><rect x="1" y="10" width="7" height="7" rx="2"/><rect x="10" y="10" width="7" height="7" rx="3.5"/></svg>
+          <span>Каталог</span>
+        </a>
+        <a class="nav__link reveal" style="--i:9" href="#cart">Корзина <span class="badge">0</span></a>
+        <i class="nav__sep reveal" style="--i:10"></i>
+        <a class="nav__user reveal" style="--i:11" href="#account" aria-label="Личный кабинет">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="copy">
+    <h1 class="title" data-split>Упаковка, усиливающая<br>ваш продукт</h1>
+    <p class="sub" data-split-soft>Изготавливаем ПЭТ-банки для фасовки<br>пищевых и непищевых продуктов</p>
+    <a class="cta" href="#catalog">Перейти в каталог</a>
+  </div>
+
+  <!-- data-in/out — кадры рендера, на которых подпись видна полностью; f/t — начало и конец появления -->
+  <div class="caps">
+    <div class="cap" data-side="right" data-f="205" data-in="225" data-out="280" data-t="295"
+         data-anchor="220,1000,600 250,1015,610 280,1105,680">
+      <i class="cap__dot"></i><i class="cap__line"></i>
+      <h3 class="cap__title">Первичный ПЭТ</h3>
+      <p class="cap__text">Банки производятся из&nbsp;нового ПЭТ&nbsp;— материала, который применяется для бутылок питьевой воды. Вторичное сырьё не&nbsp;используется</p>
+    </div>
+    <div class="cap" data-side="left" data-f="315" data-in="335" data-out="430" data-t="445"
+         data-anchor="320,1044,396 345,1140,396 370,1156,436 395,1140,476 420,1148,548 445,1228,516">
+      <i class="cap__dot"></i><i class="cap__line"></i>
+      <h3 class="cap__title">Крышка Easy&nbsp;Open</h3>
+      <p class="cap__text">Крышка с&nbsp;кольцом открывается одним движением, без ножа и&nbsp;консервного ключа</p>
+    </div>
+  </div>
+
+  <!-- точки экранов: при наведении раскрываются в навигацию (названия разделов — черновые) -->
+  <nav class="dots" aria-label="Разделы страницы">
+    <div class="dots__card">
+    <a href="#top" class="on" style="--i:0" data-go="0"><span class="dots__label"><b>01</b>Главная</span><i></i></a>
+    <a href="#props" style="--i:1" data-go="255"><span class="dots__label"><b>02</b>Свойства банки</span><i></i></a>
+    <a href="#catalog" style="--i:2"><span class="dots__label"><b>03</b>Каталог</span><i></i></a>
+    <a href="#production" style="--i:3"><span class="dots__label"><b>04</b>Производство</span><i></i></a>
+    <a href="#about" style="--i:4"><span class="dots__label"><b>05</b>О компании</span><i></i></a>
+    <a href="#faq" style="--i:5"><span class="dots__label"><b>06</b>Вопросы</span><i></i></a>
+    <a href="#contacts" style="--i:6"><span class="dots__label"><b>07</b>Контакты</span><i></i></a>
+    </div>
+  </nav>
+</section>
+</main>
+
+<!-- переключатель вариантов (для показа, на сайте не нужен) -->
+<div class="tweak" id="tweak">
+  <div class="tweak__panel" role="group" aria-label="Варианты">
+    <div class="tweak__label">Меню</div>
+    <div class="seg" data-key="menu">
+      <button data-v="swiss">Швейцарский</button>
+      <button data-v="pill">С подложкой</button>
+      <button data-v="plain">Без фона</button>
+      <button data-v="center">Лого по центру</button>
+    </div>
+    <div class="tweak__label">Заголовок</div>
+    <div class="seg" data-key="pos">
+      <button data-v="top">Сверху по центру</button>
+      <button data-v="bottom">Снизу по центру</button>
+      <button data-v="left">Слева</button>
+      <button data-v="right">Справа</button>
+    </div>
+    <div class="tweak__label">Шрифт заголовка</div>
+    <div class="seg" data-key="font">
+      <button data-v="oranienbaum">Oranienbaum</button>
+      <button data-v="medeo">Medeo</button>
+    </div>
+    <div class="tweak__label">Кнопка</div>
+    <div class="seg" data-key="cta">
+      <button data-v="outline">Контур</button>
+      <button data-v="glass">Стекло</button>
+      <button data-v="line">Линия</button>
+      <button data-v="solid">Белая</button>
+    </div>
+    <div class="tweak__label">Подписи свойств</div>
+    <div class="seg" data-key="cap">
+      <button data-v="callout">Выноска</button>
+      <button data-v="left">Слева</button>
+      <button data-v="right">Справа</button>
+      <button data-v="bottom">Внизу</button>
+    </div>
+    <div class="tweak__label">Размеры, px</div>
+    <label class="size"><span>Заголовок</span><input type="range" data-size="ts" min="28" max="140"><input type="number" data-size="ts" min="10" max="240"></label>
+    <label class="size"><span>Описание</span><input type="range" data-size="ss" min="12" max="32"><input type="number" data-size="ss" min="8" max="60"></label>
+    <label class="size"><span>Кнопка: высота</span><input type="range" data-size="bh" min="28" max="80"><input type="number" data-size="bh" min="20" max="120"></label>
+    <label class="size"><span>Кнопка: скругление</span><input type="range" data-size="br" min="0" max="26"><input type="number" data-size="br" min="0" max="60"></label>
+    <label class="size"><span>Кнопка: шрифт</span><input type="range" data-size="bf" min="10" max="24"><input type="number" data-size="bf" min="8" max="40"></label>
+    <button class="tweak__reset" id="sizeReset">Сбросить размеры</button>
+    <button class="tweak__replay" id="replay">Повторить анимацию</button>
+  </div>
+  <button class="tweak__toggle" id="tweakToggle" aria-expanded="false">
+    Варианты
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 8l4-4 4 4"/></svg>
+  </button>
+</div>
+
+<script>
+  // разбивка текста на буквы для анимации появления
+  function split(el, soft) {
+    if (!el.dataset.src) el.dataset.src = el.innerHTML;
+    let i = 0;
+    const parts = el.dataset.src.split(/(<br\s*\/?>)/i);
+    el.innerHTML = parts.map(p => {
+      if (/^<br/i.test(p)) return '<br>';
+      return p.split(' ').filter(Boolean).map(w => {
+        const chars = [...w].map(c => `<span class="ch" style="--i:${i++}">${c}</span>`).join('');
+        return soft ? chars : `<span class="w">${chars}</span>`;
+      }).join(soft ? ' ' : ' ');
+    }).join('');
+    el.setAttribute('aria-label', el.textContent);
+  }
+  const title = document.querySelector('[data-split]');
+  const sub = document.querySelector('[data-split-soft]');
+  function play() {
+    split(title); split(sub, true);
+    document.querySelectorAll('.reveal, .dots i, .hero__bg, .cta').forEach(n => {
+      n.style.animation = 'none'; n.offsetHeight; n.style.animation = '';
+    });
+  }
+  play();
+
+  // размеры, которые можно задать руками; без значения работает размер из стилей
+  const SIZES = ['ts', 'ss', 'bh', 'br', 'bf'];
+  const SIZE_DEFAULTS = { ts: '72', bh: '52' };          // вариант, выбранный по умолчанию
+  const cta = () => document.querySelector('.cta');
+  const sizeOf = { ts: () => title, ss: () => sub, bh: cta, br: cta, bf: cta };
+  const sizeProp = { bh: 'height', br: 'borderTopLeftRadius' };
+  function syncSizes() {                    // ползунки показывают то, что сейчас на экране
+    for (const k of SIZES) {
+      const cs = getComputedStyle(sizeOf[k]());
+      const v = state[k] || Math.round(parseFloat(cs[sizeProp[k] || 'fontSize']));
+      document.querySelectorAll(`[data-size="${k}"]`).forEach(i => { if (document.activeElement !== i) i.value = v; });
+    }
+  }
+  document.querySelectorAll('[data-size]').forEach(i => i.addEventListener('input', () => {
+    if (i.value === '') return;
+    state[i.dataset.size] = String(Math.round(+i.value)); apply();
+  }));
+  document.getElementById('sizeReset').addEventListener('click', () => { SIZES.forEach(k => delete state[k]); Object.assign(state, SIZE_DEFAULTS); apply(); });
+  addEventListener('resize', () => syncSizes());
+
+  // варианты: запоминаются в адресе (#pos=left&font=inter), чтобы можно было скинуть ссылку
+  const state = Object.assign({ menu: 'center', pos: 'left', font: 'oranienbaum', cta: 'outline', cap: 'callout', ...SIZE_DEFAULTS },
+    Object.fromEntries(new URLSearchParams(location.hash.slice(1))));
+  function apply() {
+    document.body.dataset.menu = state.menu;
+    document.body.dataset.pos = state.pos;
+    document.body.dataset.font = state.font;
+    document.body.dataset.cta = state.cta;
+    document.body.dataset.cap = state.cap;
+    document.getElementById('tweak').hidden = state.ui === '0';
+    for (const k of SIZES) {
+      if (state[k]) document.body.style.setProperty('--' + k, state[k] + 'px');
+      else document.body.style.removeProperty('--' + k);
+    }
+    syncSizes();
+    document.querySelectorAll('.seg').forEach(seg => {
+      seg.querySelectorAll('button').forEach(b =>
+        b.setAttribute('aria-pressed', String(b.dataset.v === state[seg.dataset.key])));
+    });
+    history.replaceState(null, '', '#' + new URLSearchParams(state));
+  }
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+    state[b.closest('.seg').dataset.key] = b.dataset.v;
+    apply(); split(title); split(sub, true);
+  }));
+  apply();
+
+  const tweak = document.getElementById('tweak');
+  document.getElementById('tweakToggle').addEventListener('click', e => {
+    const open = tweak.classList.toggle('open');
+    e.currentTarget.setAttribute('aria-expanded', String(open));
+  });
+  document.getElementById('replay').addEventListener('click', play);
+
+  // ── фон: интро → петля «парения», при скролле — кадры рендера на canvas ──
+  // Числа ниже — номера кадров рендера Gold (0001–0542). Скролл продолжает ровно с того
+  // кадра, на котором сейчас видео, а при возврате наверх видео идёт дальше с того же места.
+  const INTRO_END = 116, LOOP_A = 96, LOOP_B = 138, LOOP_FPS = 60, LOOP_LEN = 360, LAST = 542;
+  const SRC_W = 2048, SRC_H = 1080, CACHE = 64, DECODERS = 8;
+  const vIntro = document.getElementById('vIntro');
+  const vLoop = document.getElementById('vLoop');
+  const vScroll = document.getElementById('vScroll');
+  const scrolly = document.querySelector('.scrolly');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let idle = vIntro, mode = 'idle', f0 = 1, target = 1, shown = 1, dir = 1, last = performance.now();
+
+  // cut — переключить без растворения (интро и петля идут кадр в кадр)
+  function show(v, cut) {
+    [vIntro, vLoop, vScroll].forEach(x => { x.classList.toggle('cut', !!cut); x.classList.toggle('on', x === v); });
+  }
+  // петлю показываем только когда у неё уже есть кадр, иначе мелькнёт чёрный фон
+  function toLoop() {
+    idle = vLoop; vLoop.currentTime = 0;
+    const reveal = () => { if (mode === 'idle') show(vLoop, true); };
+    vLoop.play().then(() => vLoop.requestVideoFrameCallback ? vLoop.requestVideoFrameCallback(reveal) : reveal()).catch(reveal);
+  }
+  vIntro.addEventListener('ended', toLoop);
+  // интро запускает прелоадер (startHero), чтобы клиент увидел его с начала
+
+  // какой кадр рендера сейчас на экране у видео
+  function idleFrame() {
+    if (idle === vIntro) return Math.min(INTRO_END, Math.floor(vIntro.currentTime * 24) + 1);
+    const i = Math.round(vLoop.currentTime * LOOP_FPS) % LOOP_LEN;    // петля — синус по кадрам 96–138
+    return (LOOP_A + LOOP_B) / 2 + (LOOP_B - LOOP_A) / 2 * Math.sin(2 * Math.PI * i / LOOP_LEN);
+  }
+
+  function progress() {
+    const max = scrolly.offsetHeight - innerHeight;
+    if (max <= 0) return 0;
+    return Math.min(1, Math.max(0, scrollY / max));
+  }
+  function tick() {
+    const p = progress();
+    document.body.style.setProperty('--p', p.toFixed(4));
+    const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (mode === 'idle' && !noFrames) {
+      // пока играет видео, кадры вокруг его текущего кадра уже раскодированы —
+      // при первом движении колеса холсту не нужно их ждать
+      shown = target = idleFrame(); dir = 1; prefetch();
+      if (drawn < 0 && bitmaps.size) draw(Math.round(shown));   // холст заранее «прогрет» одним кадром
+      if (p > 0.002) {                              // начали скроллить: видео замирает на текущем кадре
+        idle.pause(); f0 = shown = idleFrame(); drawn = -1; mode = 'enter';
+      }
+    }
+    if (mode !== 'idle') {
+      target = f0 + (LAST - f0) * p;
+      if (Math.abs(target - shown) > 0.5) dir = target > shown ? 1 : -1;
+      shown += (target - shown) * (1 - Math.exp(-dt * 6));   // инерция: кадры мягко догоняют скролл
+      prefetch();
+      draw(Math.round(shown));
+      captions(mode === 'scroll' ? shown : 0);
+      // холст проявляется поверх замершего видео, только когда на нём тот же кадр
+      if (mode === 'enter' && drawn > 0 && Math.abs(drawn - shown) < 1.5) { show(vScroll); mode = 'scroll'; }
+      // вернулись наверх и кадры догнали скролл — видео продолжает с того же места
+      if (p <= 0.002 && Math.abs(shown - f0) < 0.6) {
+        if (mode === 'scroll') show(idle);
+        idle.play().catch(() => {}); mode = 'idle';
+      }
+    }
+    if (mode === 'idle') captions(0);
+    const sec = mode === 'scroll' && shown >= 190 ? 1 : 0;   // 02 — после того как банка начала приближаться
+    navLinks.forEach((a, i) => a.classList.toggle('on', i === sec));
+    requestAnimationFrame(tick);
+  }
+
+  // навигация: первые два пункта ведут внутри экрана с банкой
+  const navLinks = [...document.querySelectorAll('.dots a')];
+  navLinks.forEach(a => a.addEventListener('click', e => {
+    if (a.dataset.go === undefined) return;
+    e.preventDefault();
+    const F = +a.dataset.go, max = scrolly.offsetHeight - innerHeight;
+    const from = mode === 'idle' ? idleFrame() : f0;
+    scrollTo({ top: F ? max * (F - from) / (LAST - from) : 0, behavior: 'smooth' });
+  }));
+
+  // подписи: прозрачность по кадру рендера, для выноски — точка там, где деталь на экране
+  const caps = [...document.querySelectorAll('.cap')].map(el => ({
+    el, f: +el.dataset.f, in: +el.dataset.in, out: +el.dataset.out, t: +el.dataset.t,
+    anchor: el.dataset.anchor.split(' ').map(s => s.split(',').map(Number)),
+  }));
+  const smooth = x => x * x * (3 - 2 * x);
+  function captions(f) {
+    const callout = document.body.dataset.cap === 'callout';
+    const sc = Math.max(innerWidth / SRC_W, innerHeight / SRC_H);
+    for (const c of caps) {
+      const a = f <= c.f || f >= c.t ? 0 : f < c.in ? smooth((f - c.f) / (c.in - c.f)) : f > c.out ? smooth((c.t - f) / (c.t - c.out)) : 1;
+      c.el.style.setProperty('--a', a.toFixed(3));
+      if (!callout || !a) continue;
+      // точка привязки на кадре рендера → координаты на экране (с тем же кадрированием, что у холста)
+      const A = c.anchor; let k = 0;
+      while (k < A.length - 2 && f > A[k + 1][0]) k++;
+      const [f1, x1, y1] = A[k], [f2, x2, y2] = A[k + 1] || A[k];
+      const u = Math.min(1, Math.max(0, (f - f1) / ((f2 - f1) || 1)));
+      const ax = innerWidth / 2 + (x1 + (x2 - x1) * u - SRC_W / 2) * sc;
+      const ay = innerHeight / 2 + (y1 + (y2 - y1) * u - SRC_H / 2) * sc;
+      // длина линии — от края текста до точки на детали
+      const w = c.el.offsetWidth, right = c.el.dataset.side === 'right';
+      const len = right ? (innerWidth - 96 - w) - 14 - ax : ax - (64 + w) - 14;
+      c.el.style.setProperty('--ay', ay.toFixed(1));
+      c.el.style.setProperty('--len', Math.max(0, len).toFixed(1));
+    }
+  }
+
+  // Кадры скролла: AVIF 4:4:4 в полном разрешении рендера, рисуются на canvas (как на unplastic.ru).
+  // Сжатые файлы грузятся все; раскодированными держим только окно вокруг текущего кадра —
+  // все 542 в памяти заняли бы ~4,8 ГБ, и браузер стал бы перекодировать их прямо во время скролла.
+  const blobs = [], bitmaps = new Map(), decoding = new Set();
+  let noFrames = false, decodeErrors = 0;          // браузер не умеет AVIF — остаёмся на видео
+  const ctx = vScroll.getContext('2d', { alpha: false });
+  let drawn = -1;
+  function fit() {                                  // холст в полной плотности экрана (retina)
+    const k = Math.min(devicePixelRatio || 1, 2);
+    vScroll.width = Math.round(innerWidth * k); vScroll.height = Math.round(innerHeight * k);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    drawn = -1;
+  }
+  function decode(i) {
+    if (i < 1 || i > LAST || !blobs[i] || bitmaps.has(i) || decoding.has(i)) return;
+    decoding.add(i);
+    createImageBitmap(blobs[i]).then(bm => {           // раскодирование идёт вне основного потока
+      bitmaps.set(i, bm);
+      if (bitmaps.size > CACHE) {                       // выкидываем самые дальние от текущего кадра
+        const far = [...bitmaps.keys()].sort((a, b) => Math.abs(b - shown) - Math.abs(a - shown));
+        for (const k of far.slice(0, bitmaps.size - CACHE)) { bitmaps.get(k).close(); bitmaps.delete(k); }
+      }
+    }).catch(() => {
+      if (++decodeErrors > 3 && !bitmaps.size) {
+        noFrames = true;
+        if (mode !== 'idle') { show(idle); idle.play().catch(() => {}); mode = 'idle'; }
+      }
+    }).finally(() => decoding.delete(i));
+  }
+  function prefetch() {                                 // по ходу движения: от текущего кадра к цели и дальше
+    const cur = Math.round(shown);
+    const ahead = Math.min(Math.abs(Math.round(target) - cur) + 12, CACHE - 16);
+    for (let d = 0; d <= ahead && decoding.size < DECODERS; d++) decode(cur + dir * d);
+    for (let d = 1; d <= 6 && decoding.size < DECODERS; d++) decode(cur - dir * d);
+  }
+  function pick(i) {                                    // кадр не готов — лучше задержаться на пройденном
+    for (let d = 0; d <= 12; d++) if (bitmaps.has(i - dir * d)) return i - dir * d;
+    for (let d = 1; d <= LAST; d++) { if (bitmaps.has(i + d)) return i + d; if (bitmaps.has(i - d)) return i - d; }
+    return -1;
+  }
+  function draw(i) {
+    const k = pick(i);
+    if (k < 0 || k === drawn) return;
+    const cw = vScroll.width, ch = vScroll.height;
+    const sc = Math.max(cw / SRC_W, ch / SRC_H);       // как object-fit: cover
+    ctx.drawImage(bitmaps.get(k), (cw - SRC_W * sc) / 2, (ch - SRC_H * sc) / 2, SRC_W * sc, SRC_H * sc);
+    drawn = k;
+  }
+  // сначала качаем кадры, с которых обычно начинается скролл, потом остальные от грубого к точному
+  const order = [], queued = new Set();
+  const add = i => { if (i >= 1 && i <= LAST && !queued.has(i)) { queued.add(i); order.push(i); } };
+  for (let i = LOOP_A; i <= LOOP_B + 24; i++) add(i);
+  for (let step = 16; step >= 1; step /= 2) for (let i = 1; i <= LAST; i += step) add(i);
+  let next = 0; const tries = {};
+  function load() {
+    if (next >= order.length) return;
+    const i = order[next++];
+    fetch(`frames/${String(i).padStart(4, '0')}.avif`)
+      .then(r => { if (!r.ok) throw r.status; return r.blob(); })
+      .then(b => { blobs[i] = b; loadedBytes += b.size; attempted++; })
+      .catch(() => { if ((tries[i] = (tries[i] || 0) + 1) < 4) order.push(i); else attempted++; })   // сбой сети — повторим
+      .finally(() => { showLoad(); load(); });
+  }
+
+  // ── прелоадер: страница открывается, только когда загружено всё — кадры и оба видео целиком ──
+  const loader = document.getElementById('loader');
+  const FRAMES_BYTES = 43812374;                    // сумма файлов frames/*.avif
+  let attempted = 0, loadedBytes = 0, started = false;
+  // видео качаем целиком в память (а не потоком): при воспроизведении не будет буферизации и потери качества
+  const vids = [vIntro, vLoop].map(v => {
+    const src = [...v.querySelectorAll('source')].find(x => v.canPlayType(x.type) !== '');
+    return { v, url: src && src.getAttribute('src'), size: 3e6, got: 0, ready: false };
+  });
+  async function fetchVideo(x) {
+    try {
+      const r = await fetch(x.url); if (!r.ok) throw r.status;
+      x.size = +r.headers.get('content-length') || x.size;
+      const reader = r.body.getReader(), chunks = [];
+      for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); x.got += value.length; showLoad(); }
+      x.v.querySelectorAll('source').forEach(el => el.remove());
+      x.v.src = URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
+    } catch { x.v.preload = 'auto'; }              // не вышло — пусть браузер грузит сам
+    x.v.load();
+    await new Promise(res => { x.v.addEventListener('canplaythrough', res, { once: true }); setTimeout(res, 15000); });
+    x.ready = true; showLoad();
+  }
+  const mb = b => (b / 1e6).toFixed(0);
+  function startHero() {
+    if (started) return; started = true;
+    loader.classList.add('done'); document.documentElement.classList.remove('loading');
+    play();                                         // анимация заголовка и меню — заново, уже на виду
+    if (still) toLoop(); else { vIntro.currentTime = 0; vIntro.play().catch(toLoop); }
+  }
+  function showLoad() {
+    const total = FRAMES_BYTES + vids.reduce((a, x) => a + x.size, 0);
+    const got = loadedBytes + vids.reduce((a, x) => a + x.got, 0);
+    const framesDone = attempted >= LAST, videosDone = vids.every(x => x.ready);
+    const k = framesDone && videosDone ? 1 : Math.min(.99, got / total);
+    loader.style.setProperty('--lp', k.toFixed(3));
+    document.getElementById('loaderPct').textContent = Math.floor(k * 100);
+    document.getElementById('loaderMb').textContent = `${mb(got)} из ${mb(total)} МБ`;
+    document.getElementById('loaderStage').textContent =
+      framesDone && videosDone ? 'Готово' : framesDone ? 'Загрузка видео' : 'Загрузка кадров анимации';
+    if (framesDone && videosDone && !started) setTimeout(startHero, 400);
+  }
+  vids.forEach(fetchVideo);
+  document.documentElement.classList.add('loading');
+  history.scrollRestoration = 'manual'; scrollTo(0, 0);
+
+  fit(); addEventListener('resize', fit);
+  for (let n = 0; n < 10; n++) load();
+  requestAnimationFrame(tick);
+</script>
+</body>
+</html>

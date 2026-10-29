@@ -1,0 +1,7 @@
+# Cloudflare Pages: кадры, видео и шрифт кэшируются на сутки — повторное открытие без новой загрузки
+/frames/*
+  Cache-Control: public, max-age=86400
+/*.mp4
+  Cache-Control: public, max-age=86400
+/fonts/*
+  Cache-Control: public, max-age=86400
